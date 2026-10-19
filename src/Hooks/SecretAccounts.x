@@ -6,6 +6,8 @@
 //  of the native account list, so the regular switcher never sees them, and
 //  the secret switcher only ever lists them. It opens with a two-finger long
 //  press on the home top bar (Settings.x), next to the one-finger NFB menu.
+//  It is also the only way into a hidden account: any other switch to one is
+//  dropped.
 //
 
 #import <stdatomic.h>
@@ -237,6 +239,81 @@ static NSArray* filteredAccounts(NSArray* accounts) {
 
 %end
 
+#pragma mark - Switch guard
+
+// Set only by the secret switcher, for the account it is switching to.
+static NSString* approvedSwitchID;
+
+// Hidden accounts can still be reached through routes that don't use the
+// filtered list (the sidebar avatars, notifications, links), so every switch
+// into one is refused unless the secret switcher asked for it.
+static BOOL accountSwitchAllowed(id account) {
+    if (secretIDs.count == 0) {
+        return YES;
+    }
+    NSString* targetID = accountIDString(account);
+    if (!targetID || ![secretIDs containsObject:targetID] || [targetID isEqualToString:approvedSwitchID]) {
+        return YES;
+    }
+    // Restoring the last-used account at launch, or staying on the current
+    // one, isn't a switch.
+    NSString* currentID = accountIDString(currentNativeAccount());
+    if (!currentID || [currentID isEqualToString:targetID]) {
+        return YES;
+    }
+    // If the current account was just logged out, the app has to land
+    // somewhere, even when only hidden accounts are left.
+    for (id other in BHTAllNativeAccounts()) {
+        if ([accountIDString(other) isEqualToString:currentID]) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
+%hook T1HostViewController
+
+- (void)viewAccount:(id)account animated:(BOOL)animated {
+    if (accountSwitchAllowed(account)) {
+        %orig;
+    }
+}
+
+- (void)viewAccount:(id)account withPanelID:(long long)panelID animated:(BOOL)animated {
+    if (accountSwitchAllowed(account)) {
+        %orig;
+    }
+}
+
+- (void)viewAccount:(id)account withPanelID:(long long)panelID animated:(BOOL)animated completion:(id)completion {
+    if (accountSwitchAllowed(account)) {
+        %orig;
+    }
+}
+
+- (void)viewAccount:(id)account
+        withPanelID:(long long)panelID
+     preserveModals:(BOOL)preserveModals
+           animated:(BOOL)animated
+         completion:(id)completion {
+    if (accountSwitchAllowed(account)) {
+        %orig;
+    }
+}
+
+- (void)viewAccount:(id)account
+                 withPanelID:(long long)panelID
+              preserveModals:(BOOL)preserveModals
+    additionalViewController:(id)viewController
+                    animated:(BOOL)animated
+                  completion:(id)completion {
+    if (accountSwitchAllowed(account)) {
+        %orig;
+    }
+}
+
+%end
+
 #pragma mark - Switcher UI
 
 static void postAccountsChanged(void) {
@@ -260,6 +337,8 @@ static void setAccountSecret(NSString* accountID, BOOL secret) {
 }
 
 static void switchToAccount(id account) {
+    NSString* accountID = accountIDString(account);
+    approvedSwitchID = accountID;
     id host = sendGetter(objc_getClass("T1HostViewController"), @selector(sharedHostViewController));
     if ([host respondsToSelector:@selector(viewAccount:animated:)]) {
         @try {
@@ -267,6 +346,13 @@ static void switchToAccount(id account) {
         } @catch (__unused NSException* exception) {
         }
     }
+    // Once the switch has landed the account is current, which the guard
+    // allows anyway, so the approval only has to outlive the transition.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if ([approvedSwitchID isEqualToString:accountID]) {
+            approvedSwitchID = nil;
+        }
+    });
 }
 
 static UIViewController* topViewController(UIWindow* window) {
