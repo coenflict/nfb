@@ -5,6 +5,7 @@
 
 #import "Headers/XHeaders.h"
 #import "HookHelpers.h"
+#import "SecretAccounts.h"
 
 // MARK: - NeoFreeBird settings entry
 
@@ -195,7 +196,23 @@ static NSArray* sectionsWithNeoFreeBirdEntry(TFNItemsDataViewController* setting
                                               animated:YES];
 }
 
+// Two fingers held on the same bar open the hidden account switcher instead.
+- (void)handleSecretLongPress:(UILongPressGestureRecognizer*)press {
+    if (press.state != UIGestureRecognizerStateBegan || ![self homeIsVisible]) {
+        return;
+    }
+
+    UIImpactFeedbackGenerator* haptic =
+        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+    [haptic impactOccurred];
+    BHTPresentSecretSwitcher(press.view);
+}
+
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer*)gestureRecognizer {
+    UILongPressGestureRecognizer* press = (UILongPressGestureRecognizer*)gestureRecognizer;
+    if (press.numberOfTouchesRequired == 1 && press.numberOfTouches > 1) {
+        return NO;
+    }
     return [self homeIsVisible];
 }
 
@@ -230,6 +247,14 @@ void attachNeoFreeBirdSettingsGesture(UIViewController* home) {
     press.cancelsTouchesInView = NO;
     press.delegate = target;
     [bar addGestureRecognizer:press];
+
+    UILongPressGestureRecognizer* secretPress =
+        [[UILongPressGestureRecognizer alloc] initWithTarget:target
+                                                      action:@selector(handleSecretLongPress:)];
+    secretPress.numberOfTouchesRequired = 2;
+    secretPress.cancelsTouchesInView = NO;
+    secretPress.delegate = target;
+    [bar addGestureRecognizer:secretPress];
 
     objc_setAssociatedObject(bar, SettingsGestureKey, target, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
