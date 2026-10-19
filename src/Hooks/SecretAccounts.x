@@ -536,7 +536,8 @@ static NSArray* withoutSecretAccounts(NSArray* accounts) {
 }
 
 - (NSArray*)accountsSortedByLastActiveDate:(NSArray*)accounts {
-    return withoutSecretAccounts(%orig);
+    NSArray* sorted = %orig;
+    return withoutSecretAccounts(sorted);
 }
 
 %end
