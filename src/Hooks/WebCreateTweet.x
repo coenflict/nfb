@@ -16,6 +16,7 @@
 //
 
 #import "HookHelpers.h"
+#import "SecretAccounts.h"
 
 // MARK: - Constants
 
@@ -120,16 +121,7 @@ static id accountForUserID(NSString* userID) {
         return nil;
     }
     @try {
-        Class twitterClass = %c(TFNTwitter);
-        if (![twitterClass respondsToSelector:@selector(sharedTwitter)]) {
-            return nil;
-        }
-        id twitter = ((id (*)(id, SEL))objc_msgSend)((id)twitterClass, @selector(sharedTwitter));
-        if (![twitter respondsToSelector:@selector(accounts)]) {
-            return nil;
-        }
-        NSArray* accounts = ((id (*)(id, SEL))objc_msgSend)(twitter, @selector(accounts));
-        for (id account in accounts) {
+        for (id account in BHTAllNativeAccounts()) {
             if ([userIDStringForAccount(account) isEqualToString:userID]) {
                 return account;
             }

@@ -8,6 +8,7 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 #import "Core/BHTBundle.h"
+#import "Hooks/SecretAccounts.h"
 
 // Implemented in WebCreateTweet.x: seed the web-session cache for `userID` and mark it
 // a cookie-login account so its native calls get re-signed with these cookies.
@@ -379,9 +380,8 @@ static id accountWithUsernameAndUserID(Class accountClass, NSString* username,
         return nil;
     }
     @try {
-        id shared = performShared(objc_getClass("TFNTwitter"), @selector(sharedTwitter));
-        id accounts = performShared(shared, @selector(accounts));
-        if ([accounts isKindOfClass:[NSArray class]]) {
+        NSArray* accounts = BHTAllNativeAccounts();
+        if (accounts.count) {
             for (id acct in accounts) {
                 long long accountUserID = 0;
                 if (getAccountUserID(acct, &accountUserID) && accountUserID == uid) {
