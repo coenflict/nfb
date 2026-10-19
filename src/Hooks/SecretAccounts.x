@@ -349,41 +349,89 @@ static void presentSecretSwitcher(UIView* sourceView) {
     presentSheet(sheet, sourceView);
 }
 
-@interface BHTSecretSwitcherGesture : UILongPressGestureRecognizer
+// Every tab button currently on screen; together they outline the tab bar.
+static NSHashTable<UIView*>* tabViews;
+
+static BOOL touchIsOnTabBar(UITouch* touch, UIWindow* window) {
+    CGRect bar = CGRectNull;
+    for (UIView* tab in tabViews) {
+        if (tab.window == window && !tab.hidden && tab.alpha > 0.01) {
+            bar = CGRectUnion(bar, [tab convertRect:tab.bounds toView:nil]);
+        }
+    }
+    // Stretch across the full width so the gaps between buttons count too.
+    if (CGRectIsNull(bar)) {
+        return NO;
+    }
+    bar = CGRectMake(0, CGRectGetMinY(bar) - 8, window.bounds.size.width, CGRectGetHeight(bar) + 16);
+    return CGRectContainsPoint(bar, [touch locationInView:nil]);
+}
+
+static UIView* tabViewAtPoint(UIWindow* window, CGPoint point) {
+    for (UIView* tab in tabViews) {
+        if (tab.window == window && CGRectContainsPoint([tab convertRect:tab.bounds toView:nil], point)) {
+            return tab;
+        }
+    }
+    return tabViews.anyObject.window == window ? tabViews.anyObject : window;
+}
+
+@interface BHTSecretSwitcherGesture : UILongPressGestureRecognizer <UIGestureRecognizerDelegate>
 @end
 
 @implementation BHTSecretSwitcherGesture
 
 - (void)bht_handle:(BHTSecretSwitcherGesture*)gesture {
-    if (gesture.state != UIGestureRecognizerStateBegan || !gesture.view.window) {
+    UIWindow* window = (UIWindow*)gesture.view;
+    if (gesture.state != UIGestureRecognizerStateBegan || ![window isKindOfClass:[UIWindow class]]) {
         return;
     }
     [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium] impactOccurred];
-    presentSecretSwitcher(gesture.view);
+    presentSecretSwitcher(tabViewAtPoint(window, [gesture locationInView:window]));
+}
+
+// Only touches on the tab bar ever reach this recognizer, so it never sees
+// (or interferes with) anything happening in the rest of the app.
+- (BOOL)gestureRecognizer:(UIGestureRecognizer*)recognizer shouldReceiveTouch:(UITouch*)touch {
+    return touchIsOnTabBar(touch, (UIWindow*)recognizer.view);
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer*)recognizer
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer*)other {
+    return YES;
 }
 
 @end
 
-// Two fingers held on a tab bar button: nothing in the app uses that, so it
-// can't fire by accident, yet it is always one gesture away.
+// Two fingers held anywhere on the tab bar (same button, two buttons, or the
+// gaps between them): nothing in the app uses that, so it can't fire by
+// accident, yet it is always one gesture away.
 %hook T1TabView
 
 - (void)didMoveToWindow {
     %orig;
 
-    if (!self.window) {
+    UIWindow* window = self.window;
+    if (!window) {
         return;
     }
-    for (UIGestureRecognizer* recognizer in self.gestureRecognizers) {
+    if (!tabViews) {
+        tabViews = [NSHashTable weakObjectsHashTable];
+    }
+    [tabViews addObject:self];
+
+    for (UIGestureRecognizer* recognizer in window.gestureRecognizers) {
         if ([recognizer isKindOfClass:[BHTSecretSwitcherGesture class]]) {
             return;
         }
     }
     BHTSecretSwitcherGesture* gesture = [[BHTSecretSwitcherGesture alloc] init];
     [gesture addTarget:gesture action:@selector(bht_handle:)];
+    gesture.delegate = gesture;
     gesture.numberOfTouchesRequired = 2;
-    gesture.minimumPressDuration = 0.8;
-    [self addGestureRecognizer:gesture];
+    gesture.minimumPressDuration = 0.6;
+    gesture.allowableMovement = 30;
+    [window addGestureRecognizer:gesture];
 }
 
 %end
