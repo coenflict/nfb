@@ -1,0 +1,61 @@
+name: Inspect X Classes
+
+on:
+  workflow_dispatch:
+    inputs:
+      decrypted_ipa_url:
+        description: "Direct URL of an X IPA"
+        required: true
+        type: string
+      list_regex:
+        description: "Regex of class names to list"
+        default: "Account|Dashboard|Drawer|SideNav|Sidebar"
+        required: true
+        type: string
+      dump_regex:
+        description: "Regex of classes to dump in full (empty = none)"
+        default: ""
+        required: false
+        type: string
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install ipsw
+        run: |
+          gh release download -R blacktop/ipsw -p '*linux_x86_64.tar.gz' -O ipsw.tgz
+          mkdir ipsw && tar -xzf ipsw.tgz -C ipsw
+          sudo install "$(find ipsw -type f -name ipsw | head -n1)" /usr/local/bin/ipsw
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Extract binaries
+        run: |
+          wget "$IPA_URL" --no-verbose -O x.ipa
+          unzip -q x.ipa -d x
+          find x/Payload -type f \( -path '*/Frameworks/*.framework/*' -o -name Twitter \) \
+            -exec sh -c 'file -b "$1" | grep -q Mach-O && echo "$1"' _ {} \; > binaries.txt
+          wc -l binaries.txt
+        env:
+          IPA_URL: ${{ inputs.decrypted_ipa_url }}
+
+      - name: Class dump
+        run: |
+          mkdir -p headers
+          while read -r bin; do
+            name=$(basename "$bin")
+            ipsw class-dump "$bin" --headers -o "headers/$name" >/dev/null 2>&1 || true
+          done < binaries.txt
+          echo "::group::Matching classes"
+          find headers -name '*.h' | sed 's|headers/||' | grep -E "$LIST_REGEX" | sort
+          echo "::endgroup::"
+          if [ -n "$DUMP_REGEX" ]; then
+            find headers -name '*.h' | grep -E "$DUMP_REGEX" | sort | while read -r h; do
+              echo "===== $h"
+              grep -vE '^\s*$|^//' "$h"
+            done
+          fi
+        env:
+          LIST_REGEX: ${{ inputs.list_regex }}
+          DUMP_REGEX: ${{ inputs.dump_regex }}
