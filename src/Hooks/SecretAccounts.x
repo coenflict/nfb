@@ -7,7 +7,8 @@
 //  the secret switcher only ever lists them. It opens with a two-finger long
 //  press on the home top bar (Settings.x), next to the one-finger NFB menu.
 //  It is also the only way into a hidden account: any other switch to one is
-//  dropped.
+//  dropped, launch opens the unhidden account instead, the sidebar never shows
+//  them, and after two idle minutes the app hands back to the unhidden account.
 //
 
 #import <stdatomic.h>
@@ -241,53 +242,247 @@ static NSArray* filteredAccounts(NSArray* accounts) {
 
 #pragma mark - Switch guard
 
+static NSString* const kReturnAccountIDKey = @"bh_secret_return_account_id";
+
+// Idle time (touches only, background included) after which a hidden account
+// hands back to the unhidden one.
+static const CFTimeInterval kHiddenIdleTimeout = 120;
+
 // Set only by the secret switcher, for the account it is switching to.
 static NSString* approvedSwitchID;
 
+// The account the guard last let the host show. nil until launch opens one.
+static NSString* shownAccountID;
+
+static CFAbsoluteTime lastActivity;
+static BOOL returningToUnhidden;
+static UIWindow* shieldWindow;
+
+static BOOL isSecretID(NSString* accountID) {
+    return accountID && [secretIDs containsObject:accountID];
+}
+
+static BOOL isSecretAccount(id account) {
+    return isSecretID(accountIDString(account));
+}
+
+// The unhidden account to fall back to: the last one used, else the first.
+static id returnAccount(void) {
+    NSString* savedID = [[NSUserDefaults standardUserDefaults] stringForKey:kReturnAccountIDKey];
+    id fallback = nil;
+    for (id account in BHTAllNativeAccounts()) {
+        NSString* accountID = accountIDString(account);
+        if (!accountID || isSecretID(accountID)) {
+            continue;
+        }
+        if ([accountID isEqualToString:savedID]) {
+            return account;
+        }
+        fallback = fallback ?: account;
+    }
+    return fallback;
+}
+
+static id showAccount(id account) {
+    NSString* accountID = accountIDString(account);
+    shownAccountID = accountID;
+    NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
+    if (accountID && !isSecretID(accountID) && ![[defaults stringForKey:kReturnAccountIDKey] isEqualToString:accountID]) {
+        [defaults setObject:accountID forKey:kReturnAccountIDKey];
+    }
+    return account;
+}
+
 // Hidden accounts can still be reached through routes that don't use the
 // filtered list (the sidebar avatars, notifications, links), so every switch
-// into one is refused unless the secret switcher asked for it.
-static BOOL accountSwitchAllowed(id account) {
-    if (secretIDs.count == 0) {
-        return YES;
-    }
+// goes through here. Returns the account the host should actually show, or
+// nil to drop the switch.
+static id resolveSwitchTarget(id account) {
     NSString* targetID = accountIDString(account);
-    if (!targetID || ![secretIDs containsObject:targetID] || [targetID isEqualToString:approvedSwitchID]) {
-        return YES;
+    if (!targetID || !isSecretID(targetID) || [targetID isEqualToString:approvedSwitchID] ||
+        [targetID isEqualToString:shownAccountID]) {
+        return showAccount(account);
     }
-    // Restoring the last-used account at launch, or staying on the current
-    // one, isn't a switch.
-    NSString* currentID = accountIDString(currentNativeAccount());
-    if (!currentID || [currentID isEqualToString:targetID]) {
-        return YES;
+    // Launch is restoring a hidden account: open the unhidden one instead,
+    // before anything of the hidden account's is built.
+    if (!shownAccountID || !currentNativeAccount()) {
+        return showAccount(returnAccount() ?: account);
     }
-    // If the current account was just logged out, the app has to land
-    // somewhere, even when only hidden accounts are left.
     for (id other in BHTAllNativeAccounts()) {
-        if ([accountIDString(other) isEqualToString:currentID]) {
-            return NO;
+        if ([accountIDString(other) isEqualToString:shownAccountID]) {
+            return nil;
         }
     }
-    return YES;
+    // The shown account was just logged out, so the app has to land somewhere.
+    return showAccount(returnAccount() ?: account);
 }
+
+static void requestSwitch(id account, BOOL animated) {
+    id host = sendGetter(objc_getClass("T1HostViewController"), @selector(sharedHostViewController));
+    if (account && [host respondsToSelector:@selector(viewAccount:animated:)]) {
+        @try {
+            ((void (*)(id, SEL, id, BOOL))objc_msgSend)(host, @selector(viewAccount:animated:), account, animated);
+        } @catch (__unused NSException* exception) {
+        }
+    }
+}
+
+// An opaque window over the app, so nothing of a hidden account is visible in
+// the app switcher or while handing back to the unhidden account.
+static void showShield(void) {
+    if (shieldWindow) {
+        return;
+    }
+    UIWindowScene* scene = nil;
+    for (UIScene* candidate in UIApplication.sharedApplication.connectedScenes) {
+        if ([candidate isKindOfClass:[UIWindowScene class]]) {
+            scene = (UIWindowScene*)candidate;
+            break;
+        }
+    }
+    if (!scene) {
+        return;
+    }
+    shieldWindow = [[UIWindow alloc] initWithWindowScene:scene];
+    shieldWindow.windowLevel = UIWindowLevelAlert + 100;
+    shieldWindow.rootViewController = [UIViewController new];
+    shieldWindow.rootViewController.view.backgroundColor = UIColor.systemBackgroundColor;
+    shieldWindow.backgroundColor = UIColor.systemBackgroundColor;
+    shieldWindow.hidden = NO;
+}
+
+static void hideShield(void) {
+    shieldWindow.hidden = YES;
+    shieldWindow = nil;
+}
+
+// Keeps the shield up until the host really is on an unhidden account,
+// re-sending the switch every couple of seconds if it hasn't landed.
+static void confirmReturn(int attempt) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        id current = currentNativeAccount();
+        if (current && !isSecretAccount(current)) {
+            returningToUnhidden = NO;
+            hideShield();
+            return;
+        }
+        id target = returnAccount();
+        if (!target) {
+            returningToUnhidden = NO;
+            hideShield();
+            return;
+        }
+        if (attempt % 8 == 7) {
+            requestSwitch(target, NO);
+        }
+        confirmReturn(attempt + 1);
+    });
+}
+
+static void returnToUnhiddenAccount(void) {
+    if (returningToUnhidden) {
+        return;
+    }
+    id target = returnAccount();
+    if (!target) {
+        hideShield();
+        return;
+    }
+    returningToUnhidden = YES;
+    showShield();
+    requestSwitch(target, NO);
+    confirmReturn(0);
+}
+
+static BOOL hiddenIdleExpired(void) {
+    return isSecretAccount(currentNativeAccount()) && CFAbsoluteTimeGetCurrent() - lastActivity >= kHiddenIdleTimeout;
+}
+
+static void hiddenIdleTick(void) {
+    if (returningToUnhidden || UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
+        return;
+    }
+    if (!isSecretAccount(currentNativeAccount())) {
+        lastActivity = CFAbsoluteTimeGetCurrent();
+    } else if (hiddenIdleExpired()) {
+        returnToUnhiddenAccount();
+    }
+}
+
+static void observeAppLifecycle(void) {
+    NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
+    [center addObserverForName:UIApplicationDidEnterBackgroundNotification
+                        object:nil
+                         queue:[NSOperationQueue mainQueue]
+                    usingBlock:^(__unused NSNotification* note) {
+                        if (isSecretAccount(currentNativeAccount())) {
+                            showShield();
+                        }
+                    }];
+    // Runs before the app refreshes anything on becoming active, so a timed
+    // out hidden account is swapped out before its timeline reloads.
+    [center addObserverForName:UIApplicationWillEnterForegroundNotification
+                        object:nil
+                         queue:[NSOperationQueue mainQueue]
+                    usingBlock:^(__unused NSNotification* note) {
+                        if (hiddenIdleExpired()) {
+                            returnToUnhiddenAccount();
+                        } else if (!returningToUnhidden) {
+                            hideShield();
+                        }
+                    }];
+    [NSTimer scheduledTimerWithTimeInterval:5
+                                    repeats:YES
+                                      block:^(__unused NSTimer* timer) {
+                                          hiddenIdleTick();
+                                      }];
+}
+
+%hook UIApplication
+
+- (void)sendEvent:(UIEvent*)event {
+    if (event.type == UIEventTypeTouches) {
+        lastActivity = CFAbsoluteTimeGetCurrent();
+    }
+    %orig;
+}
+
+%end
 
 %hook T1HostViewController
 
+- (void)setupWithAccount:(id)account {
+    id target = resolveSwitchTarget(account);
+    if (target || !account) {
+        %orig(target);
+    }
+}
+
+- (void)handleRootViewControllerSetupWithAccount:(id)account {
+    id target = resolveSwitchTarget(account);
+    if (target || !account) {
+        %orig(target);
+    }
+}
+
 - (void)viewAccount:(id)account animated:(BOOL)animated {
-    if (accountSwitchAllowed(account)) {
-        %orig;
+    id target = resolveSwitchTarget(account);
+    if (target || !account) {
+        %orig(target, animated);
     }
 }
 
 - (void)viewAccount:(id)account withPanelID:(long long)panelID animated:(BOOL)animated {
-    if (accountSwitchAllowed(account)) {
-        %orig;
+    id target = resolveSwitchTarget(account);
+    if (target || !account) {
+        %orig(target, panelID, animated);
     }
 }
 
 - (void)viewAccount:(id)account withPanelID:(long long)panelID animated:(BOOL)animated completion:(id)completion {
-    if (accountSwitchAllowed(account)) {
-        %orig;
+    id target = resolveSwitchTarget(account);
+    if (target || !account) {
+        %orig(target, panelID, animated, completion);
     }
 }
 
@@ -296,8 +491,9 @@ static BOOL accountSwitchAllowed(id account) {
      preserveModals:(BOOL)preserveModals
            animated:(BOOL)animated
          completion:(id)completion {
-    if (accountSwitchAllowed(account)) {
-        %orig;
+    id target = resolveSwitchTarget(account);
+    if (target || !account) {
+        %orig(target, panelID, preserveModals, animated, completion);
     }
 }
 
@@ -307,9 +503,40 @@ static BOOL accountSwitchAllowed(id account) {
     additionalViewController:(id)viewController
                     animated:(BOOL)animated
                   completion:(id)completion {
-    if (accountSwitchAllowed(account)) {
-        %orig;
+    id target = resolveSwitchTarget(account);
+    if (target || !account) {
+        %orig(target, panelID, preserveModals, viewController, animated, completion);
     }
+}
+
+%end
+
+#pragma mark - Sidebar
+
+static NSArray* withoutSecretAccounts(NSArray* accounts) {
+    if (secretIDs.count == 0 || ![accounts isKindOfClass:[NSArray class]]) {
+        return accounts;
+    }
+    NSIndexSet* keep = [accounts indexesOfObjectsPassingTest:^BOOL(id account, __unused NSUInteger idx, __unused BOOL* stop) {
+        return !isSecretAccount(account);
+    }];
+    return keep.count == accounts.count ? accounts : [accounts objectsAtIndexes:keep];
+}
+
+// The sidebar's account bubbles (and their badges) come from their own list,
+// so hidden accounts are taken out of it here.
+%hook T1DashAccountSwitcherView
+
+- (void)setAccounts:(NSArray*)accounts {
+    %orig(withoutSecretAccounts(accounts));
+}
+
+- (void)setVisibleAccounts:(NSArray*)accounts {
+    %orig(withoutSecretAccounts(accounts));
+}
+
+- (NSArray*)accountsSortedByLastActiveDate:(NSArray*)accounts {
+    return withoutSecretAccounts(%orig);
 }
 
 %end
@@ -339,14 +566,9 @@ static void setAccountSecret(NSString* accountID, BOOL secret) {
 static void switchToAccount(id account) {
     NSString* accountID = accountIDString(account);
     approvedSwitchID = accountID;
-    id host = sendGetter(objc_getClass("T1HostViewController"), @selector(sharedHostViewController));
-    if ([host respondsToSelector:@selector(viewAccount:animated:)]) {
-        @try {
-            ((void (*)(id, SEL, id, BOOL))objc_msgSend)(host, @selector(viewAccount:animated:), account, YES);
-        } @catch (__unused NSException* exception) {
-        }
-    }
-    // Once the switch has landed the account is current, which the guard
+    lastActivity = CFAbsoluteTimeGetCurrent();
+    requestSwitch(account, YES);
+    // Once the switch has landed the account is the shown one, which the guard
     // allows anyway, so the approval only has to outlive the transition.
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if ([approvedSwitchID isEqualToString:accountID]) {
@@ -441,5 +663,9 @@ void BHTPresentSecretSwitcher(UIView* sourceView) {
     if (twitterClass) {
         installHooksOnClass(twitterClass, NO);
     }
+    lastActivity = CFAbsoluteTimeGetCurrent();
+    dispatch_async(dispatch_get_main_queue(), ^{
+        observeAppLifecycle();
+    });
     %init;
 }
