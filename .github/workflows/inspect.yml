@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Install ipsw
         run: |
-          gh release download -R blacktop/ipsw -p '*linux_x86_64.tar.gz' -O ipsw.tgz
+          gh release download -R blacktop/ipsw -p 'ipsw_*_linux_x86_64.tar.gz' -O ipsw.tgz
           mkdir ipsw && tar -xzf ipsw.tgz -C ipsw
           sudo install "$(find ipsw -type f -name ipsw | head -n1)" /usr/local/bin/ipsw
         env:
