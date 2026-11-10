@@ -65,6 +65,7 @@
 
 "COOL_KIDS_SECTION_HEADER_TITLE" = "L'élite";
 "SPECIAL_THANKS_SECTION_HEADER_TITLE" = "Remerciements spéciaux";
+"TRANSLATOR_PAGE_SECTION_HEADER_TITLE" = "Traducteurs";
 "FOLLOW_OFFICIAL_PAGE_SECTION_HEADER_TITLE" = "Suivre NeoFreeBird";
 
 /*General*/
@@ -75,8 +76,13 @@
 "NO_FOCUS_LOST_TITLE" = "Garder sa place dans les fils";
 "NO_FOCUS_LOST_DETAIL" = "Empêche Twitter de détecter le passage à une autre app pour ne pas perdre votre place dans un fil.";
 
+"IPAD_SPLIT_VIEW_TITLE" = "Activer la vue partagée sur iPad";
+"IPAD_SPLIT_VIEW_DETAIL" = "Permet d’utiliser Twitter en vue partagée sur iPad (et sur l’iPhone Duo), avec un Tweet ouvert d’un côté et votre fil de l’autre.";
+
 "HIDE_TIMELINE_PROMPTS_TITLE" = "Masquer les invites dans le fil";
 "HIDE_TIMELINE_PROMPTS_DETAIL" = "Supprime les bannières comme « Ajouter des contacts ».";
+"HIDE_VIDEOS_FOR_YOU_TITLE" = "Masquer « Vidéos pour vous »";
+"HIDE_VIDEOS_FOR_YOU_DETAIL" = "Masque le module « Vidéos pour vous » dans votre fil.";
 
 "HIDE_BLOCKED_RETWEETS_TITLE" = "Masquer les retweets des comptes qui vous bloquent";
 "HIDE_BLOCKED_RETWEETS_DETAIL" = "Masque les retweets des comptes qui vous ont bloqué.";
@@ -89,6 +95,12 @@
 
 "ALWAYS_OPEN_SAFARI_TITLE" = "Utiliser un navigateur externe";
 "ALWAYS_OPEN_SAFARI_DETAIL" = "Ouvre les liens dans Safari ou votre navigateur par défaut.";
+
+"BLOCK_LINK_TRACKING_TITLE" = "Bloquer le suivi des liens";
+"BLOCK_LINK_TRACKING_DETAIL" = "Ouvre les liens directement sans passer par t.co, sans requêtes t.co en arrière-plan ni identifiants de clics publicitaires. Les avertissements de Twitter concernant les liens dangereux ne s’afficheront pas.";
+
+"STRIP_TRACKING_PARAMS_TITLE" = "Supprimer les paramètres de suivi";
+"STRIP_TRACKING_PARAMS_DETAIL" = "Supprime les paramètres utm_ et les autres marqueurs de suivi des liens que vous ouvrez.";
 
 "SHARING_DOMAIN_TITLE" = "Domaine de partage";
 
@@ -105,6 +117,9 @@
 "SHOW_UNROUNDED_QUOTE_NUMBERS_TITLE" = "Afficher le nombre exact de citations";
 "SHOW_UNROUNDED_QUOTE_NUMBERS_DETAIL" = "Affiche le nombre exact de citations et de retweets reçus par un Tweet. Peut entraîner des débordements d’affichage.";
 
+"POST_INTERACTIONS_COUNTS_TITLE" = "Citations : %@  Retweets : %@";
+"POST_INTERACTIONS_UNROUNDED_COUNTS_TITLE" = "Citations : %lld  Retweets : %lld";
+
 "USE_TENOR_GIFS_TITLE" = "Utiliser les GIFs Tenor";
 "USE_TENOR_GIFS_DETAIL" = "Utilise les GIFs Tenor à la place des GIFs de Twitter (GIPHY). Tenor offre davantage de choix.";
 
@@ -113,6 +128,9 @@
 
 "SHOW_POLL_RESULTS_TITLE" = "Afficher les résultats des sondages avant de voter";
 "SHOW_POLL_RESULTS_DETAIL" = "Ajoute les résultats du sondage aux intitulés des réponses avant votre vote pour voir comment les autres ont voté.";
+
+"RESTORE_TWEET_LABELS_TITLE" = "Afficher la source des Tweets";
+"RESTORE_TWEET_LABELS_DETAIL" = "Affiche l’application utilisée pour publier les Tweets.";
 
 "SHOW_ACCOUNT_LOCATION_TITLE" = "Afficher la localisation du compte";
 "SHOW_ACCOUNT_LOCATION_DETAIL" = "Affiche la localisation du compte ayant publié le Tweet dans le pied de page du Tweet.";
@@ -130,6 +148,8 @@
 "HIDE_BOOKMARK_BUTTON_DETAIL" = "Supprime le bouton de signet des Tweets.";
 "HIDE_DOWNVOTE_BUTTON_TITLE" = "Masquer les votes négatifs";
 "HIDE_DOWNVOTE_BUTTON_DETAIL" = "Supprime le bouton de vote négatif des Tweets.";
+"HIDE_MADE_ON_X_TITLE" = "Masquer « Made on X »";
+"HIDE_MADE_ON_X_DETAIL" = "Supprime la mention « Made on X » des Tweets.";
 
 "DISABLE_SENSITIVE_TWEET_WARNINGS_TITLE" = "Pas d'avertissements de contenu sensible";
 
@@ -149,8 +169,11 @@
 "SQUARE_AVATARS_TITLE" = "Photos de profil carrées";
 "SQUARE_AVATARS_DETAIL" = "Affiche des photos de profil carrées pour tout le monde, comme les comptes de marque sur l'ancien Twitter.";
 
+"DEFAULT_REPLY_SORTING_TITLE" = "Tri des réponses par défaut";
+"DEFAULT_REPLY_SORTING_DETAIL" = "Choisissez le tri des réponses par défaut pour tous les Tweets.";
+
 "REPLY_SORTING_TITLE" = "Pas de tri des réponses";
-"REPLY_SORTING_DETAIL" = "Désactive le tri des réponses dans les conversations de Tweets.";
+"REPLY_SORTING_DETAIL" = "Masque le bouton de tri des réponses dans les conversations de Tweets.";
 
 "RESTORE_REPLY_CONTEXT_TITLE" = "Restaurer le contexte de réponse";
 "RESTORE_REPLY_CONTEXT_DETAIL" = "Affiche les personnes auxquelles la réponse est adressée sous les Tweets.";
@@ -280,7 +303,11 @@
 
 /*Labs*/
 "REPLY_IN_WEBVIEW_TITLE" = "Répondre dans une vue web";
-"REPLY_IN_WEBVIEW_DETAIL" = "Ouvre la zone de réponse dans une vue web pour éviter l'attestation.";
+"REPLY_IN_WEBVIEW_DETAIL" = "Solution de secours en cas d’échec de l’envoi des réponses. Publie les réponses sur x.com plutôt que dans l’app.";
+
+"LIQUID_GLASS_TITLE" = "Activer Liquid Glass";
+"LIQUID_GLASS_DETAIL" = "Active la nouvelle interface Liquid Glass de X. Cette refonte est expérimentale et peut entraîner des problèmes.";
+"LIQUID_GLASS_RESTART_ALERT_MESSAGE" = "La refonte Liquid Glass nécessite un redémarrage pour prendre effet.";
 
 /*Debug*/
 "FLEX_TWITTER_TITLE" = "Mode débogage";
@@ -348,11 +375,20 @@
 "DIM_THEME_RESTART_ALERT_MESSAGE" = "Le thème bleu nuit nécessite un redémarrage pour prendre effet.";
 "DIM_THEME_RESTART_ALERT_RESTART_BUTTON" = "Redémarrer";
 
+"HIDE_QUOTE_TWEETS_TITLE" = "Masquer les Tweets citant d’autres Tweets";
+"HIDE_QUOTE_TWEETS_DETAIL" = "Masque les Tweets citant d’autres Tweets dans votre fil.";
+
+"HIDE_RETWEETS_TITLE" = "Masquer les retweets";
+"HIDE_RETWEETS_DETAIL" = "Masque les retweets dans votre fil.";
+
 "HIDE_VERIFIED_TWEETS_TITLE" = "Masquer les Tweets des comptes vérifiés";
 "HIDE_VERIFIED_TWEETS_DETAIL" = "Masque les Tweets des comptes vérifiés dans votre fil et les réponses, sauf si l’auteur du fil y a répondu ou si vous suivez le compte.";
 
 "HIDE_TWEET_BUTTON_TITLE" = "Masquer le bouton Tweet";
 "HIDE_TWEET_BUTTON_DETAIL" = "Supprime le bouton Tweet de la barre de navigation.";
+
+"HIDE_QUICK_COMPOSE_TITLE" = "Masquer la composition rapide";
+"HIDE_QUICK_COMPOSE_DETAIL" = "Supprime le bouton de composition rapide de la barre de navigation (uniquement avec Liquid Glass).";
 
 /*Deprecated*/
 "MODERN_SETTINGS_PLACEHOLDER_TEXT" = "Rien à voir ici pour le moment.";
@@ -420,6 +456,13 @@
 /* Presets — settings import and export */
 "SETTINGS_EXPORT_TITLE" = "Exporter les paramètres";
 "SETTINGS_IMPORT_TITLE" = "Importer les paramètres";
+"SETTINGS_RESET_TITLE" = "Réinitialiser les paramètres";
+
+"SETTINGS_RESET_CONFIRM_TITLE" = "Réinitialiser tous les paramètres ?";
+"SETTINGS_RESET_CONFIRM_MESSAGE" = "Tous les paramètres NeoFreeBird seront rétablis à leurs valeurs par défaut.";
+"SETTINGS_RESET_CONFIRM_BUTTON" = "Réinitialiser";
+"SETTINGS_RESET_SUCCESS_TITLE" = "Paramètres réinitialisés";
+"SETTINGS_RESET_SUCCESS_MESSAGE" = "Tous les paramètres ont été rétablis à leurs valeurs par défaut. Redémarrez l’application pour que toutes les modifications prennent effet.";
 
 "CUSTOM_SEND_SOUND_TITLE" = "Importer un son d’envoi";
 "CUSTOM_SEND_SOUND_DEFAULT" = "Aucun son personnalisé sélectionné";
@@ -454,3 +497,6 @@
 /* Undo Duration Labels (Added for TweetsSettingsViewController) */
 "GENERIC_OFF_LABEL" = "Désactivé";
 "SUBSCRIPTION_UNDO_SEND_DURATION_LABEL" = "%ld secondes";
+
+"GITHUB_DOWNLOAD_WARNING_TITLE" = "Bienvenue !";
+"GITHUB_DOWNLOAD_WARNING_MESSAGE" = "Assurez-vous d’avoir installé NeoFreeBird depuis notre dépôt GitHub officiel. Nous ne pouvons pas vous aider à résoudre les problèmes liés à des fichiers IPA provenant d’autres sources, et vous ne pouvez pas être certain que votre version est exempte de code malveillant. Si vous avez des questions, veuillez ouvrir un ticket sur GitHub.";

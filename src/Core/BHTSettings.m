@@ -31,7 +31,9 @@ static NSDictionary<NSString*, NSDictionary*>* BHTSettingsPages(void) {
                     @{@"key": @"no_focus_lost",
                       @"default": @NO},
                     @{@"key": @"show_scroll_indicator",
-                      @"default": @NO}
+                      @"default": @NO},
+                    @{@"key": @"ipad_split_view",
+                      @"default": @YES}
                 ]
             },
             @"appearance": @{
@@ -89,6 +91,8 @@ static NSDictionary<NSString*, NSDictionary*>* BHTSettingsPages(void) {
                       @"default": @YES},
                     @{@"key": @"hide_timeline_prompts",
                       @"default": @YES},
+                    @{@"key": @"hide_videos_for_you",
+                      @"default": @NO},
                     @{@"key": @"hide_spaces",
                       @"default": @NO},
                     @{@"key": @"hide_custom_timelines",
@@ -179,6 +183,11 @@ static NSDictionary<NSString*, NSDictionary*>* BHTSettingsPages(void) {
                     },
                     @{
                         @"key": @"restore_video_timestamp",
+                        @"default": @NO,
+                        @"type": @"toggle"
+                    },
+                    @{
+                        @"key": @"disable_double_tap_like",
                         @"default": @NO,
                         @"type": @"toggle"
                     },
@@ -313,6 +322,11 @@ static NSDictionary<NSString*, NSDictionary*>* BHTSettingsPages(void) {
                         @"type": @"toggle"
                     },
                     @{
+                        @"key": @"hide_made_on_x",
+                        @"default": @NO,
+                        @"type": @"toggle"
+                    },
+                    @{
                         @"key": @"use_tenor_gifs",
                         @"default": @NO,
                         @"type": @"toggle"
@@ -335,11 +349,6 @@ static NSDictionary<NSString*, NSDictionary*>* BHTSettingsPages(void) {
                     @{
                         @"key": @"show_account_location",
                         @"default": @YES,
-                        @"type": @"toggle"
-                    },
-                    @{
-                        @"key": @"restore_tweet_labels",
-                        @"default": @NO,
                         @"type": @"toggle"
                     },
                     @{
@@ -432,6 +441,11 @@ static NSDictionary<NSString*, NSDictionary*>* BHTSettingsPages(void) {
                         @"type": @"compactButton",
                         @"titleKey": @"SETTINGS_IMPORT_TITLE",
                         @"action": @"importSettings:"
+                    },
+                    @{
+                        @"type": @"compactButton",
+                        @"titleKey": @"SETTINGS_RESET_TITLE",
+                        @"action": @"resetSettings:"
                     }
                 ]
             },
@@ -440,6 +454,9 @@ static NSDictionary<NSString*, NSDictionary*>* BHTSettingsPages(void) {
                 @"subtitleKey": @"MODERN_SETTINGS_EXPERIMENTAL_SUBTITLE",
                 @"settings": @[
                     @{@"key": @"reply_in_webview",
+                      @"default": @NO,
+                      @"type": @"toggle"},
+                    @{@"key": @"liquid_glass",
                       @"default": @NO,
                       @"type": @"toggle"}
                 ]
