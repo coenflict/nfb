@@ -13,9 +13,9 @@ on:
         default: "15.0"
         required: true
       decrypted_ipa_url:
-        description: "Direct URL of an X IPA"
+        description: "Direct URL of an X IPA (required for sideloaded/trollstore)"
         default: ""
-        required: true
+        required: false
         type: string
       deploy_format:
         description: "Deployment format"
@@ -27,6 +27,7 @@ on:
           - sideloaded
           - trollstore
           - rootless
+          - libraries
       twitter_branding:
         description: "Set app name to Twitter (IPA builds only)"
         default: true
@@ -125,6 +126,10 @@ jobs:
         if: inputs.deploy_format == 'sideloaded' || inputs.deploy_format == 'trollstore'
         id: x_version
         run: |
+          if [ -z "$IPA_URL" ]; then
+            echo "::error::A decrypted IPA URL is required for sideloaded/trollstore builds."
+            exit 1
+          fi
           wget "$IPA_URL" --no-verbose -O main/packages/com.atebits.Tweetie2.ipa
           unzip -q main/packages/com.atebits.Tweetie2.ipa -d main/tmp
           X_VERSION=$(grep -A 1 '<key>CFBundleShortVersionString</key>' main/tmp/Payload/Twitter.app/Info.plist |
@@ -154,14 +159,32 @@ jobs:
             main/deps/ffmpeg-kit-next/build
           key: ${{ steps.ffmpeg-key.outputs.key }}
 
+      - name: Test terminology
+        working-directory: main
+        run: |
+          xcrun clang -fobjc-arc -framework Foundation -Isrc \
+            tests/TerminologyTests.m src/Core/BHTTerminology.m \
+            -o "$RUNNER_TEMP/nfb-terminology-tests"
+          "$RUNNER_TEMP/nfb-terminology-tests"
+
       - name: Build Package
         run: |
           cd ${{ github.workspace }}/main
           sed -i '' "s/^TARGET.*$/TARGET := iphone:clang:${{ inputs.sdk_version }}:${{ inputs.target_version }}/" Makefile
-          ./build.sh --${{ inputs.deploy_format }}
+          if [ "$DEPLOY_FORMAT" = libraries ]; then
+            ./deps/ffmpeg-kit-next/build-ffmpeg.sh
+            make SIDELOADED=1
+            mkdir -p packages
+            tar -czf packages/NeoFreeBird-libraries.tar.gz \
+              -C "$PWD/.theos/obj/debug" BHTwitter.dylib libbhFLEX.dylib zxPluginsInject.dylib \
+              -C "$PWD/layout/Library/Application Support/BHT" BHTwitter.bundle
+          else
+            ./build.sh --"$DEPLOY_FORMAT"
+          fi
         env:
           THEOS: ${{ github.workspace }}/theos
           BUILD_DIR: ${{ github.workspace }}/ffmpeg-build
+          DEPLOY_FORMAT: ${{ inputs.deploy_format }}
 
       - name: Rebrand IPA
         if: (inputs.deploy_format == 'sideloaded' || inputs.deploy_format == 'trollstore') && (inputs.twitter_branding || inputs.resource_pack_url != '')
