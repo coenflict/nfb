@@ -141,6 +141,12 @@ Available options:
    - Any value for rootful/rootless builds.
 5. Check the "Releases" tab once the build completes.
 
+To package an IPA locally without uploading it, run the **Build Tweak** workflow
+with the `libraries` deployment format. Leave the IPA URL empty. Its artifact
+contains `BHTwitter.dylib`, `libbhFLEX.dylib`, `zxPluginsInject.dylib`, and
+`BHTwitter.bundle` for local injection with cyan. Branding and the Safari
+extension can then be applied using the same steps as a sideloaded build.
+
 # Examples
 
 ## Build for Sideloading
